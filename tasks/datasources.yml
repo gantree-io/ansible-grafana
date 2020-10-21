@@ -23,13 +23,23 @@
   with_items: "{{ grafana_datasources }}"
   when: not grafana_use_provisioning
 
+- name: Get list of datasources that need to be deleted
+  script: files/excess_datasources.py
+  register: excess_datasources
+  check_mode: no
+
+- name: Set list of datasources to delete in facts
+  set_fact:
+    deletedatasources: "{{ excess_datasources.stdout | from_json }}"
+
 - name: Create/Update datasources file (provisioning)
   become: true
   copy:
     dest: "/etc/grafana/provisioning/datasources/ansible.yml"
     content: |
       apiVersion: 1
-      deleteDatasources: []
+      deleteDatasources:
+      {{ deletedatasources | to_nice_yaml }}
       datasources:
       {{ grafana_datasources | to_nice_yaml }}
     backup: false
